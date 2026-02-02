@@ -32,8 +32,13 @@ Apache + MySQL 기반 웹 데이터베이스 시스템 구축 (교재 16장)
 
 - ChatGPT 무료 계정을 AI 조수로 활용하여 오류 해결 학습
 - 오류 메시지 복사 → AI 질문 템플릿 활용 → 이해 후 적용
+- **실무에 필요한 내용 위주로 진행** (교재 내용 중 실무 활용도가 낮은 부분은 축소)
 
 ## 주요 파일
 
 - `README.md` - 원본 교육 요구사항
 - `curriculum.md` - 전체 수업 커리큘럼 (Day 1~10 상세 계획)
+- `notes/` - 일별 수업 노트 (day1.md ~ day4.md)
+- `labs/` - 실습 자료
+  - `day3-4_git_python_lab.md` - Git 설치 및 Python 환경 설정 실습
+  - `raspberry_pi_ssh_practice.md` - 라즈베리파이 SSH 접속 실습
