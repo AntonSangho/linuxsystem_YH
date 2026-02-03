@@ -327,6 +327,8 @@ Apache에서 /var/www/mysite를 DocumentRoot로 하는
 | 실습과제 2 | 디렉토리 구조 탐색 및 파일 관리 | Day 2 |
 | 실습과제 3 | 셸 스크립트 작성 | Day 3 |
 | 실습과제 4 | 사용자별 권한 설정 및 백그라운드 프로세스 관리 | Day 4 |
+| 추가 실습 | Git 설치 및 Python 환경 설정 (`labs/day3-4_git_python_lab.md`) | Day 3-4 |
+| 추가 실습 | 라즈베리파이 SSH 접속 실습 (`labs/raspberry_pi_ssh_practice.md`) | Day 3-4 |
 | 실습과제 5 | 디스크 파티션 및 패키지 설치 | Day 5 |
 | 실습과제 6 | 다중 사용자 환경 구성 | Day 6 |
 | 실습과제 7 | SSH 키 인증 설정 및 원격 접속 | Day 7 |
