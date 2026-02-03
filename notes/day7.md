@@ -1,18 +1,18 @@
-# Day 7: 디스크와 파일 시스템
+# Day 7: 시스템 관리 기초
 
 ## 수업 개요
 
 | 항목 | 내용 |
 |------|------|
 | 총 시간 | 5시간 |
-| 교재 범위 | 파일 시스템, 마운트, 디스크 관리 |
-| 실습과제 | 디스크 용량 확인 및 마운트 실습 |
+| 주제 | 부팅 프로세스, systemd, 패키지 관리 |
+| 실습과제 | nginx 설치 및 서비스 관리 |
 
 ## 학습 목표
 
-- 리눅스 파일 시스템 종류와 구조 이해
-- 마운트/언마운트 개념 숙달
-- df, du 명령어로 디스크 관리
+- 리눅스 부팅 프로세스 이해
+- systemd를 활용한 서비스 관리 능력 습득
+- apt/dpkg를 사용한 패키지 관리 숙달
 
 ---
 
@@ -20,385 +20,478 @@
 
 | 시간 | 내용 |
 |------|------|
-| 0.5h | 디스크 기반 파일 시스템 종류 |
-| 0.5h | 리눅스 파일 시스템 구조 |
-| 1h | 파일 시스템 마운트 |
-| 1h | 디스크 추가 설치 |
-| 1h | 디스크 파티션: fdisk |
-| 1h | 디스크 관리: df, du |
+| 1h | 리눅스 부팅 프로세스 |
+| 1.5h | systemd 서비스 관리 |
+| 1.5h | 패키지 관리 (apt/dpkg) |
+| 1h | 실습과제: nginx 설치 및 서비스 관리 |
 
 ---
 
-## 1. 디스크 기반 파일 시스템 종류 (30분)
+## 1. 리눅스 부팅 프로세스 (1시간)
 
-### 리눅스 파일 시스템
+### 부팅 단계 개요
 
-| 파일 시스템 | 설명 |
-|-------------|------|
-| ext4 | 리눅스 기본 파일 시스템 (Ubuntu 기본) |
-| ext3 | ext4 이전 버전, 저널링 지원 |
-| xfs | 대용량 파일 시스템, RHEL/CentOS 기본 |
-| btrfs | 차세대 파일 시스템, 스냅샷 지원 |
+```
+전원 ON → BIOS/UEFI → GRUB → 커널 → systemd → 로그인 화면
+```
 
-### 기타 파일 시스템
+| 단계 | 역할 |
+|------|------|
+| BIOS/UEFI | 하드웨어 초기화, 부트로더 찾기 |
+| GRUB | 커널 선택 및 로드 |
+| 커널 | 하드웨어 드라이버 로드, init 프로세스 시작 |
+| systemd | 서비스 시작, 시스템 초기화 완료 |
 
-| 파일 시스템 | 설명 |
-|-------------|------|
-| ntfs | Windows 파일 시스템 |
-| fat32/vfat | USB, SD카드 (범용) |
-| swap | 스왑 영역 |
-
-### 파일 시스템 확인
+### GRUB 부트로더
 
 ```bash
-# 마운트된 파일 시스템 확인
-df -T
+# GRUB 설정 파일 위치
+/boot/grub/grub.cfg
 
-# 특정 디스크 파일 시스템 확인
-lsblk -f
+# GRUB 설정 확인 (읽기만)
+cat /etc/default/grub
+```
+
+### 부팅 로그 확인
+
+```bash
+# 부팅 메시지 확인
+dmesg | head -50
+
+# systemd 부팅 로그
+journalctl -b
+
+# 부팅 시간 분석
+systemd-analyze
+
+# 서비스별 부팅 시간
+systemd-analyze blame | head -10
 ```
 
 ---
 
-## 2. 리눅스 파일 시스템 구조 (30분)
+## 2. systemd 서비스 관리 (1.5시간)
 
-### 디렉토리 구조 (복습)
+### systemd란?
 
-```
-/
-├── bin      # 기본 명령어
-├── boot     # 부팅 관련 파일
-├── dev      # 장치 파일
-├── etc      # 설정 파일
-├── home     # 사용자 홈 디렉토리
-├── mnt      # 임시 마운트 포인트
-├── media    # 자동 마운트 (USB 등)
-├── tmp      # 임시 파일
-├── usr      # 사용자 프로그램
-└── var      # 가변 데이터 (로그 등)
-```
+- 리눅스 시스템 및 서비스 관리자
+- PID 1로 실행되는 init 시스템
+- 병렬 서비스 시작으로 빠른 부팅
 
-### 장치 파일 (디스크)
+### systemctl 기본 명령어
 
 ```bash
-ls /dev/sd*
-# /dev/sda   - 첫 번째 디스크
-# /dev/sda1  - 첫 번째 디스크의 첫 번째 파티션
-# /dev/sda2  - 첫 번째 디스크의 두 번째 파티션
-# /dev/sdb   - 두 번째 디스크
+# 서비스 상태 확인
+sudo systemctl status 서비스명
+
+# 서비스 시작
+sudo systemctl start 서비스명
+
+# 서비스 중지
+sudo systemctl stop 서비스명
+
+# 서비스 재시작
+sudo systemctl restart 서비스명
+
+# 서비스 새로고침 (설정 다시 읽기)
+sudo systemctl reload 서비스명
 ```
 
-| 장치명 | 설명 |
+### 부팅 시 자동 시작 설정
+
+```bash
+# 부팅 시 자동 시작 활성화
+sudo systemctl enable 서비스명
+
+# 부팅 시 자동 시작 비활성화
+sudo systemctl disable 서비스명
+
+# 활성화 상태 확인
+systemctl is-enabled 서비스명
+```
+
+### 서비스 목록 확인
+
+```bash
+# 모든 서비스 상태
+systemctl list-units --type=service
+
+# 실행 중인 서비스만
+systemctl list-units --type=service --state=running
+
+# 실패한 서비스
+systemctl --failed
+```
+
+### 주요 서비스 예시
+
+| 서비스 | 설명 |
 |--------|------|
-| /dev/sda | 첫 번째 SATA/SCSI 디스크 |
-| /dev/sdb | 두 번째 디스크 |
-| /dev/nvme0n1 | NVMe SSD |
-| /dev/vda | 가상머신 디스크 |
+| ssh | SSH 원격 접속 서버 |
+| apache2 | Apache 웹 서버 |
+| mysql | MySQL 데이터베이스 |
+| nginx | Nginx 웹 서버 |
+| cron | 예약 작업 스케줄러 |
+| ufw | 방화벽 |
 
----
-
-## 3. 파일 시스템 마운트 (1시간)
-
-### 마운트란?
-
-- 디스크/파티션을 디렉토리에 연결하는 것
-- 연결된 디렉토리를 통해 디스크에 접근
-
-### mount 명령어
+### 실습: SSH 서비스 관리
 
 ```bash
-# 현재 마운트 상태 확인
-mount
+# SSH 상태 확인
+sudo systemctl status ssh
 
-# 간단히 보기
-mount | grep "^/dev"
+# SSH 재시작
+sudo systemctl restart ssh
 
-# 디스크 마운트
-sudo mount /dev/sdb1 /mnt/data
-
-# 읽기 전용으로 마운트
-sudo mount -o ro /dev/sdb1 /mnt/data
-```
-
-### umount 명령어
-
-```bash
-# 언마운트
-sudo umount /mnt/data
-
-# 또는 장치명으로
-sudo umount /dev/sdb1
-```
-
-### 마운트 포인트 생성
-
-```bash
-# 마운트할 디렉토리 생성
-sudo mkdir -p /mnt/data
-sudo mkdir -p /mnt/backup
-```
-
-### 부팅 시 자동 마운트: /etc/fstab
-
-```bash
-# fstab 확인
-cat /etc/fstab
-```
-
-```
-# /etc/fstab 형식
-# 장치          마운트포인트  파일시스템  옵션     덤프  검사순서
-/dev/sdb1      /mnt/data    ext4       defaults  0     2
+# SSH 자동 시작 확인
+systemctl is-enabled ssh
 ```
 
 ---
 
-## 4. 디스크 추가 설치 (1시간)
+## 3. 패키지 관리 (1.5시간)
 
-### 디스크 추가 과정 (개요)
+### apt vs dpkg
 
-1. 물리적 디스크 연결 (또는 VM에서 디스크 추가)
-2. 디스크 확인: `lsblk`
-3. 파티션 생성: `fdisk`
-4. 파일 시스템 생성: `mkfs`
-5. 마운트: `mount`
-6. 영구 마운트: `/etc/fstab` 수정
-
-### 디스크 확인
-
-```bash
-# 연결된 디스크 확인
-lsblk
-
-# 상세 정보
-sudo fdisk -l
-
-# 블록 장치 정보
-lsblk -f
-```
-
-### 파일 시스템 생성 (mkfs)
-
-```bash
-# ext4 파일 시스템 생성
-sudo mkfs.ext4 /dev/sdb1
-
-# xfs 파일 시스템 생성
-sudo mkfs.xfs /dev/sdb1
-```
-
----
-
-## 5. 디스크 파티션 나누기: fdisk (1시간)
-
-### fdisk 기본 사용법
-
-```bash
-# fdisk 시작
-sudo fdisk /dev/sdb
-```
-
-### fdisk 내부 명령어
-
-| 명령 | 설명 |
+| 도구 | 역할 |
 |------|------|
-| m | 도움말 |
-| p | 파티션 테이블 출력 |
-| n | 새 파티션 생성 |
-| d | 파티션 삭제 |
-| t | 파티션 타입 변경 |
-| w | 변경사항 저장 후 종료 |
-| q | 저장 없이 종료 |
+| apt | 온라인 저장소에서 패키지 설치/관리 (의존성 자동 해결) |
+| dpkg | 로컬 .deb 파일 직접 설치/관리 |
 
-### fdisk 사용 예시
+### apt 기본 명령어
 
 ```bash
-sudo fdisk /dev/sdb
+# 패키지 목록 업데이트 (설치 전 필수!)
+sudo apt update
 
-# 1. p 입력 - 현재 파티션 확인
-# 2. n 입력 - 새 파티션 생성
-#    - p (primary) 선택
-#    - 파티션 번호: 1
-#    - 시작 섹터: Enter (기본값)
-#    - 끝 섹터: Enter (전체 사용) 또는 +10G (10GB)
-# 3. p 입력 - 파티션 확인
-# 4. w 입력 - 저장 후 종료
+# 패키지 검색
+apt search 패키지명
+
+# 패키지 정보 확인
+apt show 패키지명
+
+# 패키지 설치
+sudo apt install 패키지명
+
+# 패키지 삭제
+sudo apt remove 패키지명
+
+# 패키지 완전 삭제 (설정 파일 포함)
+sudo apt purge 패키지명
+
+# 설치된 패키지 업그레이드
+sudo apt upgrade
+
+# 불필요한 패키지 제거
+sudo apt autoremove
 ```
 
-### 파티션 생성 후 과정
+### apt 실습
 
 ```bash
-# 1. 파티션 확인
-lsblk
+# 1. 패키지 목록 업데이트
+sudo apt update
 
-# 2. 파일 시스템 생성
-sudo mkfs.ext4 /dev/sdb1
+# 2. tree 패키지 검색
+apt search tree
 
-# 3. 마운트 포인트 생성
-sudo mkdir -p /mnt/newdisk
+# 3. tree 정보 확인
+apt show tree
 
-# 4. 마운트
-sudo mount /dev/sdb1 /mnt/newdisk
+# 4. tree 설치
+sudo apt install tree -y
 
-# 5. 확인
-df -h /mnt/newdisk
+# 5. 설치 확인
+tree --version
+
+# 6. tree 사용해보기
+tree /home -L 2
+```
+
+### dpkg 기본 명령어
+
+```bash
+# 설치된 패키지 목록
+dpkg -l
+
+# 특정 패키지 검색
+dpkg -l | grep 패키지명
+
+# 패키지가 설치한 파일 목록
+dpkg -L 패키지명
+
+# 파일이 어떤 패키지에 속하는지
+dpkg -S /usr/bin/ls
+
+# .deb 파일 직접 설치
+sudo dpkg -i 파일명.deb
+
+# 패키지 제거
+sudo dpkg -r 패키지명
+```
+
+### dpkg 실습
+
+```bash
+# 설치된 패키지 개수 확인
+dpkg -l | wc -l
+
+# nginx 패키지 확인
+dpkg -l | grep nginx
+
+# ls 명령어가 어떤 패키지인지
+dpkg -S /bin/ls
+```
+
+### 패키지 관리 흐름
+
+```
+1. sudo apt update          # 목록 업데이트
+2. apt search 패키지명       # 검색
+3. apt show 패키지명         # 정보 확인
+4. sudo apt install 패키지명 # 설치
+5. dpkg -l | grep 패키지명   # 설치 확인
 ```
 
 ---
 
-## 6. 디스크 관리: df, du (1시간)
-
-### df - 디스크 사용량 확인
-
-```bash
-# 기본 출력
-df
-
-# 읽기 쉬운 단위 (-h: human readable)
-df -h
-
-# 파일 시스템 타입 포함
-df -Th
-
-# 특정 경로만
-df -h /home
-```
-
-### df 출력 해석
-
-```
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/sda1        50G   15G   32G  32% /
-```
-
-| 필드 | 설명 |
-|------|------|
-| Filesystem | 장치명 |
-| Size | 전체 크기 |
-| Used | 사용량 |
-| Avail | 남은 용량 |
-| Use% | 사용률 |
-| Mounted on | 마운트 위치 |
-
-### du - 디렉토리/파일 크기 확인
-
-```bash
-# 현재 디렉토리 크기
-du -sh .
-
-# 하위 디렉토리별 크기
-du -h --max-depth=1
-
-# 특정 디렉토리
-du -sh /var/log
-
-# 크기순 정렬
-du -h /home | sort -h
-```
-
-### 실무 활용 예제
-
-```bash
-# 디스크 사용률 80% 이상인지 확인
-df -h | grep -E "([8-9][0-9]|100)%"
-
-# 홈 디렉토리에서 큰 폴더 찾기
-du -h ~ --max-depth=1 | sort -h | tail -10
-
-# /var/log 크기 확인 (로그 정리 필요 여부)
-du -sh /var/log/*
-
-# 용량 부족 시 큰 파일 찾기
-sudo find / -type f -size +100M 2>/dev/null
-```
-
----
-
-## 7. 실습과제 7: 디스크 관리 (1시간)
+## 4. 실습과제 7: nginx 설치 및 서비스 관리 (1시간)
 
 ### 과제 목표
 
-- df, du 명령어 숙달
-- 디스크 사용량 모니터링
+- apt로 nginx 패키지 설치
+- systemctl로 nginx 서비스 관리
+- 웹 브라우저에서 nginx 동작 확인
 
-### 수행 단계
+### 실습 환경
 
-#### Part 1: df로 디스크 확인
-
-```bash
-# 전체 디스크 상태
-df -h
-
-# 파일 시스템 타입 포함
-df -Th
-
-# 루트 파티션만
-df -h /
+```
+/home/user1/projects/nginx_lab/
 ```
 
-#### Part 2: du로 디렉토리 크기 확인
+---
+
+### Part 1: 실습 준비 (5분)
 
 ```bash
-# 홈 디렉토리 크기
-du -sh ~
-
-# 하위 디렉토리별 크기
-du -h ~ --max-depth=1
-
-# 크기순 정렬
-du -h ~ --max-depth=1 | sort -h
+# 실습 디렉토리 생성
+mkdir -p ~/projects/nginx_lab
+cd ~/projects/nginx_lab
 ```
 
-#### Part 3: 큰 파일/디렉토리 찾기
+---
+
+### Part 2: nginx 설치 (10분)
 
 ```bash
-# /var 디렉토리 분석
-sudo du -sh /var/*
+# 1. 패키지 목록 업데이트
+sudo apt update
 
-# 큰 로그 파일 찾기
-sudo du -sh /var/log/* | sort -h | tail -5
+# 2. nginx 검색
+apt search nginx | head -10
+
+# 3. nginx 정보 확인
+apt show nginx
+
+# 4. nginx 설치
+sudo apt install nginx -y
+
+# 5. 설치 확인
+dpkg -l | grep nginx
+nginx -v
 ```
 
-#### Part 4: 마운트 상태 확인
+**예상 결과:**
+```
+nginx version: nginx/1.x.x (Ubuntu)
+```
+
+---
+
+### Part 3: nginx 서비스 관리 (15분)
 
 ```bash
-# 마운트 상태
-mount | grep "^/dev"
+# 1. 서비스 상태 확인
+sudo systemctl status nginx
 
-# 블록 장치 정보
-lsblk
+# 2. 서비스 중지
+sudo systemctl stop nginx
+
+# 3. 상태 확인 (inactive)
+sudo systemctl status nginx
+
+# 4. 서비스 시작
+sudo systemctl start nginx
+
+# 5. 상태 확인 (active)
+sudo systemctl status nginx
+
+# 6. 자동 시작 상태 확인
+systemctl is-enabled nginx
+
+# 7. 자동 시작 비활성화
+sudo systemctl disable nginx
+
+# 8. 자동 시작 활성화
+sudo systemctl enable nginx
 ```
 
-### 제출 내용
+---
 
-- `df -h` 결과 캡처
-- `du -h ~ --max-depth=1 | sort -h` 결과 캡처
-- `lsblk` 결과 캡처
+### Part 4: 웹 페이지 확인 (10분)
+
+```bash
+# 1. 로컬에서 접속 테스트
+curl http://localhost
+
+# 2. IP 주소 확인
+ip addr | grep "inet "
+
+# 3. 웹 브라우저에서 확인
+# 브라우저를 열고 http://localhost 또는 http://VM의IP주소 접속
+```
+
+**예상 결과:** "Welcome to nginx!" 페이지가 표시됨
+
+---
+
+### Part 5: 결과 저장 (10분)
+
+```bash
+# 결과 파일 생성
+cd ~/projects/nginx_lab
+
+# nginx 버전 저장
+nginx -v 2>&1 > result.txt
+
+# 서비스 상태 저장
+echo "=== nginx 서비스 상태 ===" >> result.txt
+sudo systemctl status nginx >> result.txt
+
+# 자동 시작 상태 저장
+echo "=== 자동 시작 상태 ===" >> result.txt
+systemctl is-enabled nginx >> result.txt
+
+# 결과 확인
+cat result.txt
+```
+
+---
+
+### Part 6: Git 제출 (10분)
+
+```bash
+cd ~/projects/nginx_lab
+
+# Git 초기화 (처음인 경우)
+git init
+
+# 파일 추가
+git add result.txt
+
+# 커밋
+git commit -m "Day 7 실습: nginx 설치 및 서비스 관리"
+
+# 원격 저장소 연결 및 푸시 (GitHub 저장소 URL로 변경)
+# git remote add origin https://github.com/사용자명/저장소명.git
+# git push -u origin main
+```
+
+---
+
+### 완료 체크리스트
+
+- [ ] nginx 패키지 설치 완료
+- [ ] nginx -v 명령어로 버전 확인
+- [ ] systemctl status nginx로 상태 확인
+- [ ] systemctl start/stop으로 시작/중지
+- [ ] systemctl enable/disable로 자동 시작 설정
+- [ ] curl http://localhost로 웹 페이지 확인
+- [ ] result.txt 파일 생성 및 저장
+- [ ] Git으로 제출
+
+---
+
+### 자주 하는 실수
+
+| 실수 | 해결 방법 |
+|------|-----------|
+| apt install 전에 apt update 안 함 | `sudo apt update` 먼저 실행 |
+| sudo 없이 systemctl 실행 | `sudo systemctl start nginx` |
+| 서비스명 오타 | `systemctl list-units --type=service`로 확인 |
+| 포트 80 접속 안 됨 | 방화벽 확인: `sudo ufw allow 80` |
+
+---
 
 ### 평가 기준
 
 | 항목 | 배점 |
 |------|------|
-| df 명령어 활용 | 30% |
-| du 명령어 활용 | 30% |
-| 마운트 상태 확인 | 20% |
-| 결과 분석 | 20% |
+| apt로 nginx 설치 | 25% |
+| systemctl start/stop 사용 | 25% |
+| systemctl enable/disable 사용 | 25% |
+| 웹 페이지 접속 확인 | 15% |
+| 결과 저장 및 Git 제출 | 10% |
+
+---
+
+## 핵심 명령어 정리
+
+### 부팅 관련
+
+```bash
+dmesg               # 부팅 메시지
+journalctl -b       # systemd 부팅 로그
+systemd-analyze     # 부팅 시간 분석
+```
+
+### systemctl
+
+```bash
+systemctl status 서비스명    # 상태 확인
+systemctl start 서비스명     # 시작
+systemctl stop 서비스명      # 중지
+systemctl restart 서비스명   # 재시작
+systemctl enable 서비스명    # 자동 시작 활성화
+systemctl disable 서비스명   # 자동 시작 비활성화
+```
+
+### apt
+
+```bash
+apt update           # 목록 업데이트
+apt search 패키지명   # 검색
+apt show 패키지명     # 정보
+apt install 패키지명  # 설치
+apt remove 패키지명   # 삭제
+```
+
+### dpkg
+
+```bash
+dpkg -l              # 설치된 패키지 목록
+dpkg -L 패키지명      # 패키지가 설치한 파일
+dpkg -S 파일경로      # 파일의 소속 패키지
+```
 
 ---
 
 ## 예상 질문 및 답변
 
-### Q: df와 du 차이는?
-**A**: df는 파일 시스템(파티션) 전체 사용량, du는 특정 디렉토리/파일 크기. 용량 부족 시 df로 전체 확인, du로 어디서 많이 쓰는지 찾음.
+### Q: systemctl과 service 명령어 차이는?
+**A**: service는 구버전 명령어, systemctl은 systemd용 최신 명령어. Ubuntu 16.04 이후로는 systemctl 사용 권장.
 
-### Q: 마운트와 언마운트는 언제 하나요?
-**A**: USB, 외장하드, 추가 디스크 연결 시 마운트. 안전하게 제거하려면 언마운트 필수.
+### Q: apt와 apt-get 차이는?
+**A**: apt는 apt-get + apt-cache의 통합 명령어. 일반 사용자용으로 더 간편함. 스크립트에서는 apt-get이 더 안정적.
 
-### Q: /etc/fstab 잘못 수정하면 어떻게 되나요?
-**A**: 부팅 실패할 수 있음. 수정 전 백업 필수. 복구 모드로 부팅 후 수정 가능.
+### Q: enable과 start 차이는?
+**A**: start는 지금 당장 시작, enable은 부팅 시 자동 시작 설정. 둘 다 해야 "지금도 실행 + 부팅 시에도 실행".
 
 ---
 
 ## 다음 수업 예고
 
-**Day 8**: (교재 내용에 따라 결정)
+**Day 8**: 사용자 관리 및 네트워크
+- 사용자/그룹 관리 (useradd, passwd)
+- 네트워크 설정 (ip, ifconfig)
+- SSH 원격 접속 (PuTTY, ssh-keygen)
