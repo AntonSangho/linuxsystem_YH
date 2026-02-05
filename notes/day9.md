@@ -58,6 +58,41 @@
 - **DML (Data Manipulation Language)**: SELECT, INSERT, UPDATE, DELETE
 - **DCL (Data Control Language)**: GRANT, REVOKE
 
+### SQL 기본 문법 예시
+
+```sql
+-- 데이터베이스 생성
+CREATE DATABASE shop_db;
+
+-- 데이터베이스 선택
+USE shop_db;
+
+-- 테이블 생성
+CREATE TABLE products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    price INT NOT NULL,
+    quantity INT DEFAULT 0
+);
+
+-- 데이터 입력 (INSERT)
+INSERT INTO products (name, price, quantity) VALUES ('키보드', 50000, 10);
+INSERT INTO products (name, price, quantity) VALUES ('마우스', 30000, 20);
+INSERT INTO products (name, price, quantity) VALUES ('모니터', 250000, 5);
+
+-- 데이터 조회 (SELECT)
+SELECT * FROM products;                        -- 전체 조회
+SELECT name, price FROM products;              -- 특정 열만 조회
+SELECT * FROM products WHERE price >= 50000;   -- 조건 조회
+SELECT * FROM products ORDER BY price DESC;    -- 정렬
+
+-- 데이터 수정 (UPDATE)
+UPDATE products SET price = 45000 WHERE name = '키보드';
+
+-- 데이터 삭제 (DELETE)
+DELETE FROM products WHERE name = '마우스';
+```
+
 > 상세 SQL 문법은 교재 11장 참고
 
 ---
@@ -70,16 +105,86 @@
 - MySQL과 호환성이 높아 기존 MySQL 명령어/도구 사용 가능
 - Ubuntu에서는 `apt`로 간편 설치
 
-### 실습 내용
+### 실습: MariaDB 설치
 
-1. **MariaDB 설치**: `apt`를 사용한 설치 및 서비스 시작
-2. **DB/테이블 생성**: CREATE DATABASE, CREATE TABLE
-3. **데이터 CRUD**:
-   - INSERT (데이터 입력)
-   - SELECT (데이터 조회)
-   - UPDATE (데이터 수정)
-   - DELETE (데이터 삭제)
-4. **사용자 관리**: 사용자 생성 및 권한 부여
+```bash
+# MariaDB 설치
+sudo apt install mariadb-server mariadb-client -y
+
+# 서비스 상태 확인
+sudo systemctl status mariadb
+
+# MariaDB 접속 (Ubuntu에서는 sudo 필요)
+sudo mysql
+```
+
+### 실습: 데이터베이스 및 테이블 생성
+
+```sql
+-- 현재 데이터베이스 목록 확인
+SHOW DATABASES;
+
+-- 데이터베이스 생성
+CREATE DATABASE shop_db;
+
+-- 데이터베이스 선택
+USE shop_db;
+
+-- 테이블 생성
+CREATE TABLE products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    price INT NOT NULL,
+    quantity INT DEFAULT 0
+);
+
+-- 테이블 구조 확인
+DESC products;
+```
+
+### 실습: 데이터 CRUD
+
+```sql
+-- INSERT: 데이터 입력
+INSERT INTO products (name, price, quantity) VALUES ('키보드', 50000, 10);
+INSERT INTO products (name, price, quantity) VALUES ('마우스', 30000, 20);
+INSERT INTO products (name, price, quantity) VALUES ('모니터', 250000, 5);
+
+-- SELECT: 데이터 조회
+SELECT * FROM products;
+SELECT name, price FROM products WHERE price >= 50000;
+
+-- UPDATE: 데이터 수정
+UPDATE products SET price = 45000 WHERE name = '키보드';
+
+-- DELETE: 데이터 삭제
+DELETE FROM products WHERE name = '마우스';
+
+-- 결과 확인
+SELECT * FROM products;
+```
+
+### 실습: 사용자 생성 및 권한 부여
+
+```sql
+-- 사용자 생성
+CREATE USER 'webuser'@'localhost' IDENTIFIED BY 'password1234';
+
+-- 특정 DB에 대한 모든 권한 부여
+GRANT ALL PRIVILEGES ON shop_db.* TO 'webuser'@'localhost';
+
+-- 권한 적용
+FLUSH PRIVILEGES;
+
+-- MariaDB 종료
+EXIT;
+```
+
+```bash
+# 생성한 사용자로 접속 테스트
+mysql -u webuser -p
+# 비밀번호 입력: password1234
+```
 
 > 상세 설치/실습 절차는 교재 11장 참고
 
@@ -93,13 +198,6 @@
 - HTTP 요청을 받아 웹 페이지를 응답
 - 포트: 80 (HTTP), 443 (HTTPS)
 
-### 실습 내용
-
-1. **Apache 설치**: `apt`를 사용한 설치 및 서비스 시작
-2. **외부 접속 설정**: 방화벽 포트 개방, IP 주소 확인
-3. **시스템 디렉토리 웹사이트**: `/var/www/html/` 에 웹 페이지 구축
-4. **사용자 디렉토리 웹사이트**: `userdir` 모듈 활성화로 사용자별 웹 공간 설정
-
 ### Apache 주요 경로
 
 | 경로 | 설명 |
@@ -108,6 +206,73 @@
 | `/etc/apache2/` | 설정 파일 디렉토리 |
 | `/etc/apache2/sites-available/` | 가상 호스트 설정 |
 | `/var/log/apache2/` | 로그 파일 |
+
+### 실습: Apache 설치 및 시작
+
+```bash
+# Apache 설치
+sudo apt install apache2 -y
+
+# 서비스 상태 확인
+sudo systemctl status apache2
+
+# 방화벽에서 HTTP(80번 포트) 허용
+sudo ufw allow 80/tcp
+
+# 서버 IP 주소 확인
+ip addr show | grep inet
+```
+
+설치 후 브라우저에서 `http://서버IP주소` 접속 → Apache 기본 페이지가 보이면 성공
+
+### 실습: 시스템 디렉토리 웹사이트
+
+```bash
+# 기본 웹 페이지 편집
+sudo nano /var/www/html/index.html
+```
+
+```html
+<!DOCTYPE html>
+<html>
+<head><title>My First Web Page</title></head>
+<body>
+    <h1>Day 9 Apache 실습</h1>
+    <p>Apache 웹 서버가 정상 동작합니다!</p>
+</body>
+</html>
+```
+
+브라우저에서 `http://서버IP주소` 접속하여 변경된 페이지 확인
+
+### 실습: 사용자 디렉토리 웹사이트
+
+```bash
+# userdir 모듈 활성화
+sudo a2enmod userdir
+
+# Apache 재시작
+sudo systemctl restart apache2
+
+# 사용자 홈 디렉토리에 public_html 폴더 생성
+mkdir ~/public_html
+chmod 755 ~/public_html
+
+# 사용자 웹 페이지 생성
+nano ~/public_html/index.html
+```
+
+```html
+<!DOCTYPE html>
+<html>
+<head><title>User Page</title></head>
+<body>
+    <h1>user1의 개인 웹 페이지</h1>
+</body>
+</html>
+```
+
+브라우저에서 `http://서버IP주소/~user1/` 접속하여 확인
 
 > 상세 설정 절차는 교재 12장 참고
 
@@ -121,11 +286,78 @@
 - 리눅스에서 웹 서비스를 구축하는 가장 대표적인 조합
 - PHP가 Apache와 MariaDB 사이에서 동적 웹 페이지를 생성
 
-### 실습 내용
+### 실습: PHP 설치
 
-1. **PHP 설치**: PHP 및 관련 모듈 설치 (php, libapache2-mod-php, php-mysql 등)
-2. **APM 연동 확인**: PHP 정보 페이지(`phpinfo()`)로 연동 상태 확인
-3. **PHP에서 MariaDB 접속 테스트**: 간단한 PHP 스크립트로 DB 연결 확인
+```bash
+# PHP 및 관련 모듈 설치
+sudo apt install php libapache2-mod-php php-mysql -y
+
+# Apache 재시작 (PHP 모듈 적용)
+sudo systemctl restart apache2
+
+# PHP 버전 확인
+php -v
+```
+
+### 실습: APM 연동 확인 (phpinfo)
+
+```bash
+# PHP 정보 페이지 생성
+sudo nano /var/www/html/phpinfo.php
+```
+
+```php
+<?php
+    phpinfo();
+?>
+```
+
+브라우저에서 `http://서버IP주소/phpinfo.php` 접속 → PHP 정보 페이지가 표시되면 APM 연동 성공
+
+> **확인 포인트**: PHP 정보 페이지에서 `mysqli` 항목이 있으면 PHP-MariaDB 연동 정상
+
+### 실습: PHP에서 MariaDB 접속 테스트
+
+```bash
+sudo nano /var/www/html/db_test.php
+```
+
+```php
+<?php
+    $conn = mysqli_connect("localhost", "webuser", "password1234", "shop_db");
+
+    if ($conn) {
+        echo "<h2>MariaDB 연결 성공!</h2>";
+
+        $result = mysqli_query($conn, "SELECT * FROM products");
+
+        echo "<table border='1'>";
+        echo "<tr><th>ID</th><th>상품명</th><th>가격</th><th>수량</th></tr>";
+        while ($row = mysqli_fetch_array($result)) {
+            echo "<tr>";
+            echo "<td>" . $row['id'] . "</td>";
+            echo "<td>" . $row['name'] . "</td>";
+            echo "<td>" . $row['price'] . "</td>";
+            echo "<td>" . $row['quantity'] . "</td>";
+            echo "</tr>";
+        }
+        echo "</table>";
+
+        mysqli_close($conn);
+    } else {
+        echo "<h2>연결 실패!</h2>";
+        echo "오류: " . mysqli_connect_error();
+    }
+?>
+```
+
+브라우저에서 `http://서버IP주소/db_test.php` 접속 → 상품 목록이 테이블로 표시되면 성공
+
+> **보안 주의**: 실습 완료 후 `phpinfo.php`, `db_test.php`는 삭제하는 것이 좋음
+>
+> ```bash
+> sudo rm /var/www/html/phpinfo.php /var/www/html/db_test.php
+> ```
 
 > 상세 설치/연동 절차는 교재 16장 참고
 
@@ -138,14 +370,55 @@
 - 한국에서 가장 많이 사용되는 PHP 기반 공개 게시판
 - APM 환경에서 동작
 - 설치가 간편하여 웹 사이트 빠른 구축 가능
+- 워드프레스와 비슷한 역할 (CMS: Content Management System)
 
-### 실습 내용
+### APM + gnuboard 동작 구조
 
-1. **gnuboard 다운로드**: 공식 사이트에서 gnuboard 5.6.4 다운로드
-2. **파일 배치**: Apache 웹 디렉토리에 파일 복사
-3. **권한 설정**: 웹 서버(www-data)가 접근 가능하도록 디렉토리/파일 권한 설정
-4. **웹 설치**: 브라우저에서 설치 페이지 접속 → DB 정보 입력 → 관리자 설정
-5. **동작 확인**: 게시판 접속 및 글 작성 테스트
+```
+사용자(브라우저)
+    ↓ HTTP 요청
+Apache (웹 서버, 포트 80)
+    ↓ .php 파일 처리 요청
+PHP (스크립트 엔진)
+    ↓ DB 조회/저장 요청
+MariaDB (데이터베이스)
+    ↓ 결과 반환
+PHP → Apache → 사용자에게 HTML 응답
+```
+
+- **Apache**: 사용자의 요청을 받아 PHP에게 전달하는 역할
+- **PHP**: gnuboard의 코드를 실행하고, DB에서 데이터를 가져와 HTML을 생성
+- **MariaDB**: 게시글, 회원 정보 등 데이터를 저장/관리
+
+### 웹 애플리케이션 배포 개념
+
+gnuboard 설치는 **웹 애플리케이션 배포**의 기본 과정을 경험하는 것:
+
+| 단계 | 설명 | 핵심 개념 |
+|------|------|-----------|
+| 1. 파일 배치 | gnuboard 소스를 웹 디렉토리에 복사 | 웹 루트(`/var/www/html/`) |
+| 2. 권한 설정 | 웹 서버(www-data)가 읽기/쓰기 가능하도록 | 리눅스 파일 권한 (Day 4 복습) |
+| 3. DB 연결 | gnuboard가 MariaDB에 접근할 수 있도록 설정 | DB 호스트, 사용자, 비밀번호, DB명 |
+| 4. 웹 설치 | 브라우저에서 설치 마법사 실행 | 웹 기반 설치 인터페이스 |
+
+### gnuboard 설치 시 필요한 정보
+
+| 항목 | 설명 |
+|------|------|
+| DB Host | MariaDB가 설치된 서버 주소 (보통 `localhost`) |
+| DB User | MariaDB 사용자 이름 (gnuboard 전용 사용자 권장) |
+| DB Password | 해당 사용자 비밀번호 |
+| DB Name | gnuboard가 사용할 데이터베이스 이름 |
+| 관리자 ID/PW | gnuboard 관리자 계정 |
+
+### 실습 순서
+
+1. **gnuboard용 DB 준비**: MariaDB에서 전용 DB와 사용자 생성
+2. **gnuboard 다운로드**: 공식 사이트에서 gnuboard 5.6.4 다운로드
+3. **파일 배치**: Apache 웹 디렉토리(`/var/www/html/`)에 파일 복사
+4. **권한 설정**: 웹 서버(www-data)가 접근 가능하도록 디렉토리/파일 권한 설정
+5. **웹 설치**: 브라우저에서 설치 페이지 접속 → DB 정보 입력 → 관리자 설정
+6. **동작 확인**: 게시판 접속 및 글 작성 테스트
 
 > 상세 설치 절차는 교재 16장 참고
 
